@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Meal Oracle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c8a84b;
+    --gold-light: #f0d070;
+    --gold-dim: rgba(200,168,75,0.4);
+    --bg: #0f0e0c;
+    --bg2: rgba(255,255,255,0.03);
+    --text: #f0e8d6;
+    --text-dim: rgba(240,232,214,0.45);
+    --border: rgba(200,168,75,0.18);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Jost', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.25rem 3rem;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Background glow */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 540px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .header-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.38em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+  .header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .header h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1.25rem;
+    margin-bottom: 1.1rem;
+  }
+  .panel-label {
+    font-size: 0.58rem;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .connect-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .connect-row input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(200,168,75,0.22);
+    border-radius: 1px;
+    padding: 0.6rem 0.8rem;
+    color: var(--text);
+    font-family: monospace;
+    font-size: 0.72rem;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 0;
+  }
+  .connect-row input:focus { border-color: rgba(200,168,75,0.55); }
+  .connect-row input::placeholder { color: rgba(200,168,75,0.2); }
+  .btn-connect {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 0.6rem 1rem;
+    border-radius: 1px;
+    cursor: pointer;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .btn-connect:hover { background: rgba(200,168,75,0.1); }
+  .btn-connect:disabled { opacity: 0.4; cursor: not-allowed; }
+  .msg-error { margin-top: 0.6rem; color: #e07070; font-size: 0.7rem; line-height: 1.5; }
+  .msg-ok    { margin-top: 0.5rem; color: #8aaa7a; font-size: 0.7rem; }
+
+  /* ── RESET BANNER ── */
+  .reset-banner {
+    text-align: center;
+    padding: 0.65rem 1rem;
+    margin-bottom: 1rem;
+    background: rgba(200,168,75,0.07);
+    border: 1px solid rgba(200,168,75,0.28);
+    border-radius: 2px;
+    color: var(--gold);
+    font-size: 0.73rem;
+    letter-spacing: 0.08em;
+    animation: fadeIn 0.5s ease;
+    display: none;
+  }
+  .reset-banner.show { display: block; }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    min-height: 190px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(200,168,75,0.13);
+    border-radius: 2px;
+    margin-bottom: 1.1rem;
+    background: rgba(255,255,255,0.015);
+    overflow: hidden;
+  }
+  .result-empty {
+    color: rgba(240,232,214,0.16);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-style: italic;
+    letter-spacing: 0.05em;
+    text-align: center;
+    padding: 1rem;
+  }
+  .result-inner {
+    text-align: center;
+    padding: 1.75rem 2rem;
+    width: 100%;
+    animation: slideUp 0.42s cubic-bezier(0.22,1,0.36,1);
+  }
+  .result-sublabel {
+    font-size: 0.55rem;
+    letter-spacing: 0.38em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+  .result-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.4rem, 5vw, 2.1rem);
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--text);
+  }
+  .result-ingredients {
+    margin-top: 1rem;
+    padding: 0.6rem 1rem;
+    background: rgba(200,168,75,0.05);
+    border: 1px solid rgba(200,168,75,0.1);
+    border-radius: 1px;
+    display: inline-block;
+    max-width: 100%;
+  }
+  .result-ing-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.28em;
+    color: rgba(200,168,75,0.45);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+  }
+  .result-ing-text {
+    font-size: 0.78rem;
+    color: rgba(240,232,214,0.55);
+    line-height: 1.5;
+    font-weight: 300;
+  }
+
+  /* ── PROGRESS ── */
+  .progress-wrap { margin-bottom: 1.1rem; }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.58rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(200,168,75,0.5);
+    margin-bottom: 0.4rem;
+  }
+  .progress-bar-bg {
+    height: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    border-radius: 1px;
+    width: 0%;
+    transition: width 0.65s cubic-bezier(0.22,1,0.36,1);
+  }
+  .cycle-label {
+    font-size: 0.56rem;
+    color: rgba(200,168,75,0.35);
+    letter-spacing: 0.12em;
+    margin-top: 0.3rem;
+  }
+
+  /* ── BUTTONS ── */
+  .btn-row { display: flex; gap: 0.75rem; margin-bottom: 0; }
+  .btn-pick {
+    flex: 1;
+    padding: 1rem;
+    background: var(--gold);
+    border: none;
+    border-radius: 1px;
+    color: #0f0e0c;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-pick:hover { background: var(--gold-light); }
+  .btn-pick:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-reset {
+    padding: 1rem 1.15rem;
+    background: transparent;
+    border: 1px solid rgba(200,168,75,0.22);
+    border-radius: 1px;
+    color: rgba(200,168,75,0.45);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .btn-reset:hover { border-color: rgba(200,168,75,0.6); color: var(--gold); }
+  .btn-reset:disabled { opacity: 0.2; cursor: not-allowed; }
+
+  /* ── USED LIST ── */
+  .used-section { margin-top: 2rem; }
+  .used-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.32em;
+    color: rgba(200,168,75,0.3);
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 0.6rem;
+  }
+  .used-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .pill {
+    padding: 0.22rem 0.6rem;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 1px;
+    font-size: 0.67rem;
+    font-style: italic;
+    font-family: 'Cormorant Garamond', serif;
+    color: rgba(240,232,214,0.28);
+    text-decoration: line-through;
+    text-decoration-color: rgba(200,168,75,0.2);
+    cursor: default;
+    position: relative;
+  }
+  .pill.current {
+    color: rgba(240,232,214,0.65);
+    text-decoration: none;
+    border-color: rgba(200,168,75,0.2);
+  }
+  .pill[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1c18;
+    border: 1px solid rgba(200,168,75,0.25);
+    color: rgba(240,232,214,0.7);
+    font-size: 0.65rem;
+    font-style: normal;
+    padding: 0.35rem 0.6rem;
+    border-radius: 2px;
+    white-space: nowrap;
+    max-width: 220px;
+    white-space: normal;
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .hover-hint {
+    font-size: 0.53rem;
+    color: rgba(200,168,75,0.22);
+    margin-top: 0.4rem;
+    font-style: italic;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── MOBILE ── */
+  @media (max-width: 480px) {
+    .connect-row { flex-direction: column; }
+    .btn-connect { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-label">Daily Meal Oracle</div>
+    <h1>What shall I cook<br><em>today?</em></h1>
+  </div>
+
+  <!-- Connect panel -->
+  <div class="panel">
+    <div class="panel-label" id="connect-label">Connect Google Sheet</div>
+    <div class="connect-row">
+      <input type="text" id="sheet-url" placeholder="Paste your Google Sheets link here…" autocomplete="off" spellcheck="false">
+      <button class="btn-connect" id="btn-connect" onclick="handleConnect()">Connect</button>
+    </div>
+    <div id="msg-error" class="msg-error" style="display:none"></div>
+    <div id="msg-ok"    class="msg-ok"    style="display:none"></div>
+  </div>
+
+  <!-- Main section (hidden until connected) -->
+  <div id="main" style="display:none">
+
+    <div class="reset-banner" id="reset-banner">🎉 Full cycle complete — starting a new round!</div>
+
+    <!-- Result card -->
+    <div class="result-card" id="result-card">
+      <div class="result-empty">Press the button below to pick your meal</div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-meta">
+        <span>Cycle progress</span>
+        <span id="progress-count">0 / 0</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="cycle-label" id="cycle-label" style="display:none"></div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="btn-row">
+      <button class="btn-pick" id="btn-pick" onclick="pickMeal()">Pick my meal →</button>
+      <button class="btn-reset" id="btn-reset" title="Restart cycle" onclick="resetCycle()">↺</button>
+    </div>
+
+    <!-- Used list -->
+    <div class="used-section" id="used-section" style="display:none">
+      <div class="used-label">Already picked this cycle</div>
+      <div class="used-pills" id="used-pills"></div>
+      <div class="hover-hint" id="hover-hint" style="display:none">Hover a dish to see its ingredients</div>
+    </div>
+
+  </div><!-- /main -->
+
+</div><!-- /wrap -->
+
+<script>
+// ── State ───────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'meal-oracle-v3';
+let state = {
+  sheetUrl:   '',
+  recipes:    [],   // [{name, ingredients}]
+  remaining:  [],   // name strings not yet picked this cycle
+  used:       [],   // [{name, ingredients}] picked this cycle
+  current:    null, // {name, ingredients}
+  cycleCount: 0,
+};
+
+// ── Persist ─────────────────────────────────────────────────────────────────
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (s && s.recipes && s.recipes.length) { state = s; return true; }
+  } catch(e) {}
+  return false;
+}
+
+// ── CSV parser ───────────────────────────────────────────────────────────────
+function parseCSVLine(line) {
+  const cols = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQ = !inQ; }
+    else if (line[i] === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+    else { cur += line[i]; }
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
+function extractSheetId(url) {
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : null;
+}
+
+// ── Fetch recipes ────────────────────────────────────────────────────────────
+async function fetchRecipes(sheetId) {
+  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('fetch failed');
+  const text = await res.text();
+  return text.trim().split('\n').slice(1)
+    .map(line => {
+      const cols = parseCSVLine(line);
+      const name = cols[0] || '';
+      const ingredients = cols[1] || '';
+      return name ? { name, ingredients } : null;
+    })
+    .filter(Boolean);
+}
+
+// ── Connect ──────────────────────────────────────────────────────────────────
+async function handleConnect() {
+  const input = document.getElementById('sheet-url').value.trim();
+  setError(''); setOk('');
+
+  const id = extractSheetId(input);
+  if (!id) { setError('Invalid link. Paste the full Google Sheets URL from your browser.'); return; }
+
+  setBtnConnect('Loading…', true);
+  try {
+    const recipes = await fetchRecipes(id);
+    if (!recipes.length) throw new Error('empty');
+    state = { sheetUrl: input, recipes, remaining: recipes.map(r => r.name), used: [], current: null, cycleCount: 0 };
+    save();
+    setOk(`✓  ${recipes.length} meals loaded`);
+    document.getElementById('connect-label').textContent = '✓ Connected Sheet';
+    showMain();
+    render();
+  } catch(e) {
+    setError('Could not load recipes. Make sure the sheet sharing is set to "Anyone with the link can view" (see the guide).');
+  }
+  setBtnConnect('Connect', false);
+}
+
+// ── Pick ─────────────────────────────────────────────────────────────────────
+function pickMeal() {
+  let pool = [...state.remaining];
+  let didReset = false;
+
+  if (!pool.length) {
+    pool = state.recipes.map(r => r.name);
+    state.cycleCount++;
+    state.used = [];
+    didReset = true;
+    showResetBanner();
+  }
+
+  const idx = Math.floor(Math.random() * pool.length);
+  const pickedName = pool[idx];
+  const pickedRecipe = state.recipes.find(r => r.name === pickedName);
+
+  state.remaining = pool.filter((_, i) => i !== idx);
+  state.used = didReset ? [pickedRecipe] : [...state.used, pickedRecipe];
+  state.current = pickedRecipe;
+  save();
+  render();
+}
+
+// ── Reset cycle ───────────────────────────────────────────────────────────────
+function resetCycle() {
+  state.remaining = state.recipes.map(r => r.name);
+  state.used = [];
+  state.current = null;
+  save();
+  render();
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const { recipes, used, current, cycleCount } = state;
+
+  // Result card
+  const card = document.getElementById('result-card');
+  if (current) {
+    const ingHtml = current.ingredients
+      ? `<div class="result-ingredients">
+           <div class="result-ing-label">Main ingredients</div>
+           <div class="result-ing-text">${esc(current.ingredients)}</div>
+         </div>`
+      : '';
+    card.innerHTML = `<div class="result-inner">
+      <div class="result-sublabel">Today's meal</div>
+      <div class="result-name">${esc(current.name)}</div>
+      ${ingHtml}
+    </div>`;
+  } else {
+    card.innerHTML = '<div class="result-empty">Press the button below to pick your meal</div>';
+  }
+
+  // Progress
+  const pct = recipes.length ? (used.length / recipes.length) * 100 : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-count').textContent = `${used.length} / ${recipes.length}`;
+  const cycleEl = document.getElementById('cycle-label');
+  if (cycleCount > 0) { cycleEl.textContent = `Cycle #${cycleCount + 1}`; cycleEl.style.display = 'block'; }
+  else { cycleEl.style.display = 'none'; }
+
+  // Pick button text
+  document.getElementById('btn-pick').textContent =
+    state.remaining.length === 0 ? '🔄 New cycle & pick' : 'Pick my meal →';
+
+  // Used pills
+  const section = document.getElementById('used-section');
+  const pillsEl = document.getElementById('used-pills');
+  const hintEl  = document.getElementById('hover-hint');
+  if (used.length) {
+    section.style.display = 'block';
+    pillsEl.innerHTML = used.map(r => {
+      const isCurrent = current && r.name === current.name;
+      const tip = r.ingredients ? ` data-tip="${esc(r.ingredients)}"` : '';
+      return `<span class="pill${isCurrent ? ' current' : ''}"${tip}>${esc(r.name)}</span>`;
+    }).join('');
+    hintEl.style.display = used.some(r => r.ingredients) ? 'block' : 'none';
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+// ── UI helpers ───────────────────────────────────────────────────────────────
+function showMain() { document.getElementById('main').style.display = 'block'; }
+function setError(msg) { const el = document.getElementById('msg-error'); el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+function setOk(msg)    { const el = document.getElementById('msg-ok');    el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+function setBtnConnect(txt, disabled) { const b = document.getElementById('btn-connect'); b.textContent = txt; b.disabled = disabled; }
+function esc(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function showResetBanner() {
+  const b = document.getElementById('reset-banner');
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 3500);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (load()) {
+    document.getElementById('sheet-url').value = state.sheetUrl;
+    document.getElementById('connect-label').textContent = '✓ Connected Sheet';
+    setOk(`✓  ${state.recipes.length} meals loaded`);
+    showMain();
+    render();
+  }
+});
+</script>
+</body>
+</html>
